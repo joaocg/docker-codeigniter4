@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ci4
+      MYSQL_USER: ciuser
+      MYSQL_PASSWORD: cipassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./logs/mysql:/var/log/mysql
+    command: --log-error=/var/log/mysql/error.log
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ci4
+      POSTGRES_USER: ciuser
+      POSTGRES_PASSWORD: cipassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./logs/postgres:/var/log/postgresql
+    command: ["postgres", "-c", "log_directory=/var/log/postgresql", "-c", "logging_collector=on", "-c", "log_filename=postgresql.log"]
+
+  php:
+    build: .
+    container_name: ci4-php
+    restart: always
+    volumes:
+      - ./app:/var/www/html
+      - ./logs/php:/var/log/php
+    ports:
+      - "8080:80"
+    working_dir: /var/www/html
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
