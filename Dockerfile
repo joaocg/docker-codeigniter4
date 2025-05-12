@@ -21,6 +21,15 @@ RUN unzip /tmp/instantclient-basic-linux.x64-21.13.0.0.0dbru.zip -d /opt \
     && echo /opt/oracle > /etc/ld.so.conf.d/oracle-instantclient.conf \
     && ldconfig
 
+# Instala o PDO Oracle e OCI8
+ENV LD_LIBRARY_PATH=/opt/oracle
+ENV ORACLE_HOME=/opt/oracle
+
+RUN docker-php-ext-configure pdo_oci --with-pdo-oci=instantclient,/opt/oracle \
+    && docker-php-ext-install pdo_oci intl mysqli pdo_mysql \
+    && echo 'instantclient,/opt/oracle' | pecl install oci8 \
+    && docker-php-ext-enable oci8
+
 # Instala o PDO Oracle
 ENV LD_LIBRARY_PATH=/opt/oracle
 ENV ORACLE_HOME=/opt/oracle
