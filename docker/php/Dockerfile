@@ -15,8 +15,8 @@ RUN a2enmod rewrite
 
 # ------------------------------------------------------------
 # Oracle (OCI8 + PDO_OCI) e INTL
-# - inclui dependências de runtime (libaio, libnsl) e build (autoconf, build-essential)
-# - inclui libicu-dev para intl
+# - dependências de runtime (libaio, libnsl) e build (autoconf, build-essential)
+# - libicu-dev para intl
 # ------------------------------------------------------------
 RUN set -eux; \
     apt-get update; \
@@ -85,20 +85,5 @@ RUN set -eux; \
 </VirtualHost>" > /etc/apache2/sites-available/ci4.conf && \
     a2dissite 000-default && \
     a2ensite ci4
-
-# ------------------------------------------------------------
-# Mapear www-data para o mesmo UID/GID do host (permite bind sem volume)
-# e garantir permissões do writable/ no start
-# ------------------------------------------------------------
-ARG PUID=1000
-ARG PGID=1000
-RUN set -eux; \
-    groupmod -o -g ${PGID} www-data; \
-    usermod  -o -u ${PUID} -g ${PGID} www-data
-
-# EntryPoint para assegurar permissões em writable/ e iniciar Apache
-RUN <<'BASH'\nset -euo pipefail\ncat >/usr/local/bin/ci-entrypoint.sh <<'EOF'\n#!/usr/bin/env bash\nset -e\n# Garante as pastas do CI4\nmkdir -p /var/www/html/writable/{cache,logs,session,uploads}\n# Ajusta dono/grupo para www-data (mapeado ao UID/GID do host)\nchown -R www-data:www-data /var/www/html/writable || true\nchmod -R u+rwX,g+rwX /var/www/html/writable || true\nfind /var/www/html/writable -type d -exec chmod g+s {} + || true\n# Inicia Apache\nexec apache2-foreground\nEOF\nchmod +x /usr/local/bin/ci-entrypoint.sh\nBASH
-
-ENTRYPOINT ["/usr/local/bin/ci-entrypoint.sh"]
 
 WORKDIR /var/www/html
