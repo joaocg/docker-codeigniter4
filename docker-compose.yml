@@ -1,0 +1,27 @@
+services:
+  app:
+    platform: linux/amd64  
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: ci4-app
+    working_dir: /var/www/html
+    ports:
+      - "8080:80"
+    environment:
+      CI_ENVIRONMENT: development
+      COMPOSER_MEMORY_LIMIT: -1
+    volumes:
+      - ./app:/var/www/html
+      - ci4_vendor:/var/www/html/vendor
+      - ci4_writable:/var/www/html/writable
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ci4_vendor:
+  ci4_writable:
