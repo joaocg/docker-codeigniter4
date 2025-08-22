@@ -7,10 +7,10 @@ RUN docker-php-ext-install pdo pdo_mysql
 RUN a2enmod rewrite
 
 # ================== ORACLE (OCI8 + PDO_OCI) ==================
-# Pacotes necessários
+# Pacotes necessários (inclui libicu-dev para a extensão intl)
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends unzip pkg-config build-essential autoconf; \
+    apt-get install -y --no-install-recommends unzip pkg-config build-essential autoconf libicu-dev; \
     (apt-get install -y --no-install-recommends libaio1 || apt-get install -y --no-install-recommends libaio1t64); \
     rm -rf /var/lib/apt/lists/*
 
@@ -51,10 +51,17 @@ RUN set -eux; \
     docker-php-source delete
 # ================== /ORACLE ==================
 
+# ================== INTL ==================
+# Compila e habilita a extensão intl (usa o libicu-dev instalado acima)
+RUN set -eux; \
+    docker-php-ext-configure intl; \
+    docker-php-ext-install -j"$(nproc)" intl
+# ================== /INTL ==================
+
 # Docroot padrão (pode vir do build-arg)
 ARG APACHE_DOCUMENT_ROOT=/var/www/html/public
 
-# Vhost dedicado para o CI4 (mantido do seu)
+# Vhost dedicado para o CI4 (mantido)
 RUN set -eux; \
     echo "<VirtualHost *:80>\n\
     DocumentRoot ${APACHE_DOCUMENT_ROOT}\n\
