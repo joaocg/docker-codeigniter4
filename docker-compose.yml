@@ -1,6 +1,6 @@
 services:
   app:
-    platform: linux/amd64  
+    platform: linux/amd64
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -21,7 +21,37 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    container_name: ci4-mysql
+    platform: linux/amd64
+    command:
+      [
+        "--default-authentication-plugin=mysql_native_password",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci"
+      ]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ci4}
+      MYSQL_USER: ${MYSQL_USER:-ci4}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ci4}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
 
 volumes:
   ci4_vendor:
   ci4_writable:
+  mysql_data:
