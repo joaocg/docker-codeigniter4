@@ -23,6 +23,8 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends unzip pkg-config build-essential autoconf libicu-dev; \
     (apt-get install -y --no-install-recommends libaio1  || apt-get install -y --no-install-recommends libaio1t64); \
     (apt-get install -y --no-install-recommends libnsl   || apt-get install -y --no-install-recommends libnsl2); \
+    # Compat: algumas libs ainda procuram libnsl.so.1 em Debian recente
+    if [ ! -e /usr/lib/x86_64-linux-gnu/libnsl.so.1 ] && [ -e /usr/lib/x86_64-linux-gnu/libnsl.so.2 ]; then ln -s /usr/lib/x86_64-linux-gnu/libnsl.so.2 /usr/lib/x86_64-linux-gnu/libnsl.so.1; fi; \
     rm -rf /var/lib/apt/lists/*
 
 # Caminho do Instant Client (21.13)
@@ -39,7 +41,9 @@ RUN set -eux; \
     test -d "${ORA_DIR}"; \
     echo "${ORA_DIR}" > /etc/ld.so.conf.d/oracle-instantclient.conf; \
     ldconfig; \
-    rm -f /tmp/instantclient-*.zip
+    rm -f /tmp/instantclient-*.zip; \
+    # Diagnóstico útil nos logs de build
+    ldconfig -p | grep -E "libclntsh|libnsl|libaio" || true
 
 # Variáveis de ambiente úteis para o Oracle
 ENV LD_LIBRARY_PATH=${ORA_DIR} \
@@ -50,11 +54,13 @@ ENV LD_LIBRARY_PATH=${ORA_DIR} \
 RUN mkdir -p /opt/oracle/network/admin
 
 # OCI8 via PECL (força versão compatível e cai para a mais recente se necessário)
+# + teste em build para garantir que carregou
 RUN set -eux; \
     printf "instantclient,%s\n" "${ORA_DIR}" | pecl install oci8-3.3.0 || \
     (printf "instantclient,%s\n" "${ORA_DIR}" | pecl install oci8); \
     docker-php-ext-enable oci8; \
-    echo "extension=oci8" > /usr/local/etc/php/conf.d/oci8.ini
+    echo "extension=oci8" > /usr/local/etc/php/conf.d/oci8.ini; \
+    php -m | grep -i oci8
 
 # (Opcional) PDO_OCI
 RUN set -eux; \
@@ -69,7 +75,7 @@ RUN set -eux; \
     docker-php-ext-install -j"$(nproc)" intl
 
 # ------------------------------------------------------------
-# VHost do CodeIgniter 4 (docroot em /public)
+# VHost do CodeIgniter 4 (docroot em /public)  **(MANTIDO)**
 # ------------------------------------------------------------
 ARG APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN set -eux; \
